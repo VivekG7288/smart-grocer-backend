@@ -4,9 +4,11 @@ import connectDB from './config/db.js';
 import userRoutes from './routes/userRoutes.js';
 import shopRoutes from './routes/shopRoutes.js';
 import productRoutes from './routes/productRoutes.js';
-import consumerInventoryRoutes from './routes/consumerInventoryRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
+import pantryRoutes from './routes/pantryRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import addressRoutes from './routes/addressRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -18,9 +20,11 @@ app.use(express.json());
 app.use('/api/users', userRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/inventories', consumerInventoryRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/pantry', pantryRoutes);
+app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/addresses', addressRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Smart Grocery Server running on port ${PORT}`));
