@@ -9,6 +9,7 @@ import pantryRoutes from './routes/pantryRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import addressRoutes from './routes/addressRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -25,6 +26,7 @@ app.use('/api/pantry', pantryRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/addresses', addressRoutes);
+app.use('/api/payments', paymentRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Smart Grocery Server running on port ${PORT}`));

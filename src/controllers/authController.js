@@ -32,7 +32,8 @@ export const login = async (req, res) => {
       name: user.name, 
       email: user.email, 
       role: user.role, 
-      address: user.address 
+      address: user.address, 
+      token: user.token
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
