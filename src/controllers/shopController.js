@@ -1,7 +1,7 @@
 import Shop from "../models/Shop.js";
 import axios from "axios";
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+// const GOOGLE_MAPS_API_KEY = "AIzaSyDeUObAPbugkptlPWUnYgWnNsHgggiRo4c";
 
 // Geocoding function
 const geocodeAddress = async (address) => {
@@ -13,7 +13,7 @@ const geocodeAddress = async (address) => {
             {
                 params: {
                     address: address,
-                    key: GOOGLE_MAPS_API_KEY,
+                    key: process.env.GOOGLE_MAPS_API_KEY,
                     region: "in",
                 },
             }
