@@ -81,56 +81,14 @@ export const createShop = async (req, res) => {
     try {
         const { ownerId, name, phone, address, deliveryRadius } = req.body;
 
-        console.log("Creating shop with data:", {
+        const created = await createShopRecord({
             ownerId,
             name,
             phone,
             address,
             deliveryRadius,
         });
-
-        // Validate required fields
-        if (!ownerId || !name || !address) {
-            return res
-                .status(400)
-                .json({
-                    error: "Owner ID, shop name, and address are required",
-                });
-        }
-
-        // Geocode the shop address
-        let locationData;
-        try {
-            locationData = await geocodeAddress(address);
-        } catch (geocodeError) {
-            console.error("Geocoding failed:", geocodeError);
-            return res.status(400).json({
-                error: "Unable to find location for this address. Please check the address and try again.",
-                details: geocodeError.message,
-            });
-        }
-
-        const shop = new Shop({
-            ownerId,
-            name,
-            phone: phone || "",
-            location: {
-                type: "Point",
-                coordinates: locationData.coordinates,
-                address: locationData.formattedAddress,
-                city: locationData.city,
-                state: locationData.state,
-                pincode: locationData.pincode,
-                area: locationData.area,
-            },
-            deliveryRadius: deliveryRadius || 5,
-            isActive: true,
-        });
-
-        const savedShop = await shop.save();
-        console.log("Shop saved successfully:", savedShop);
-
-        res.status(201).json(savedShop);
+        res.status(201).json(created);
     } catch (err) {
         console.error("Error creating shop:", err);
         res.status(400).json({
@@ -138,6 +96,50 @@ export const createShop = async (req, res) => {
             details: err.stack,
         });
     }
+};
+
+export const createShopRecord = async ({
+    ownerId,
+    name,
+    phone,
+    address,
+    deliveryRadius,
+}) => {
+    if (!ownerId || !name || !address) {
+        throw new Error("Owner ID, shop name, and address are required");
+    }
+
+    // Geocode the shop address
+    let locationData;
+    try {
+        locationData = await geocodeAddress(address);
+    } catch (geocodeError) {
+        console.error("Geocoding failed:", geocodeError);
+        throw new Error(
+            "Unable to find location for this address. Please check the address and try again."
+        );
+    }
+
+    const shop = new Shop({
+        ownerId,
+        name,
+        phone: phone || "",
+        location: {
+            type: "Point",
+            coordinates: locationData.coordinates,
+            address: locationData.formattedAddress,
+            city: locationData.city,
+            state: locationData.state,
+            pincode: locationData.pincode,
+            area: locationData.area,
+        },
+        deliveryRadius: deliveryRadius || 5,
+        isActive: true,
+    });
+
+    const savedShop = await shop.save();
+    console.log("Shop saved successfully (createShopRecord):", savedShop);
+    return savedShop;
 };
 
 // Get all shops
