@@ -13,8 +13,10 @@ const corsOptions = {
     origin: ['https://smart-grocer-frontend.pages.dev', 'http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    optionsSuccessStatus: 204
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Access-Control-Allow-Origin'],
+    optionsSuccessStatus: 204,
+    preflightContinue: false
 };
 app.use(cors(corsOptions));  // CORS BEFORE everything else
 
