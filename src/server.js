@@ -10,6 +10,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import cors from "cors";
 
 dotenv.config();
 connectDB();
@@ -17,9 +18,29 @@ connectDB();
 const app = express();
 app.use(express.json());
 
-const cors = require("cors");
+// CORS: allow deployed frontend and localhost for local dev
+const allowedOrigins = [
+    "https://smart-grocer-frontend.pages.dev",
+    "http://localhost:5173",
+    "http://localhost:3000"
+];
+
 app.use(cors({
-    origin: "https://smart-grocer-frontend.pages.dev",
+        origin: function(origin, callback) {
+            // allow requests with no origin (like mobile apps or curl)
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.indexOf(origin) !== -1) {
+                return callback(null, true);
+            } else {
+                return callback(new Error("Not allowed by CORS"));
+            }
+        },
+        credentials: true
+}));
+
+// Ensure preflight requests receive the CORS headers
+app.options("*", cors({
+    origin: allowedOrigins,
     credentials: true
 }));
 app.use("/api/users", userRoutes);
