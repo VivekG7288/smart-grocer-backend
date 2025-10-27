@@ -1,31 +1,21 @@
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import cors from "cors";
 
 // Load environment variables first
 dotenv.config();
 
 const app = express();
 
-// CORS handling - must be first
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin === 'https://smart-grocer-frontend.pages.dev') {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-        
-        // Handle preflight
-        if (req.method === 'OPTIONS') {
-            return res.status(200).json({
-                status: 'ok',
-                message: 'Preflight request successful'
-            });
-        }
-    }
-    next();
-});
+// === 1. CORS handling (using cors package) ===
+const corsOptions = {
+    origin: 'https://smart-grocer-frontend.pages.dev',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 
 // Log all requests for debugging
 app.use((req, res, next) => {
@@ -45,13 +35,11 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// === 3. (NO manual .options handler – let CORS handle preflight) ===
-
-// === 4. DB connection ===
+// === 3. DB connection ===
 import connectDB from "./config/db.js";
 connectDB();
 
-// === 5. Routes ===
+// === 4. Routes ===
 import userRoutes from "./routes/userRoutes.js";
 import shopRoutes from "./routes/shopRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -92,8 +80,8 @@ app.get("/api/health", async (req, res) => {
       time: new Date().toISOString(),
       env: process.env.NODE_ENV || "development",
       cors: {
-        allowedOrigins: ['https://smart-grocer-frontend.pages.dev'],
-        credentials: true
+        allowedOrigins: [corsOptions.origin],
+        credentials: corsOptions.credentials
       }
     });
   } catch (error) {
@@ -104,17 +92,6 @@ app.get("/api/health", async (req, res) => {
     });
   }
 });
-
-// Main API routes
-app.use("/api/users", userRoutes);
-app.use("/api/shops", shopRoutes);
-app.use("/api/products", productRoutes);
-app.use("/api/orders", orderRoutes);
-app.use("/api/pantry", pantryRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/auth", authRoutes);
-app.use("/api/addresses", addressRoutes);
-app.use("/api/payments", paymentRoutes);
 
 // Error handling middleware (after all routes)
 app.use((err, req, res, next) => {
