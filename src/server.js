@@ -22,6 +22,7 @@ app.use(cors({
     origin: "https://smart-grocer-frontend.pages.dev",
     credentials: true
 }));
+app.use("/api/users", userRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
