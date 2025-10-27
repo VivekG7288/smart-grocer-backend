@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import corsMiddleware from "./cors.js"; // Custom middleware
+import corsMiddleware from "./middleware/cors.js"; // Custom middleware
 import connectDB from "./config/db.js";
 
 import userRoutes from "./routes/userRoutes.js";
