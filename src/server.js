@@ -6,30 +6,21 @@ dotenv.config(); // load .env first
 
 const app = express();
 
-// ✅ 1. Configure allowed origins
-const allowedOrigins = [
-  "https://smart-grocer-frontend.pages.dev",
-  "http://localhost:5173",
-  "http://localhost:3000"
-];
+// Simple CORS configuration that definitely works with credentials
+const corsOptions = {
+    origin: 'https://smart-grocer-frontend.pages.dev',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
 
-// ✅ 2. Manual CORS middleware (handles all cases)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-  next();
-});
+// Ensure OPTIONS requests work
+app.options('*', cors(corsOptions));
 
-// ✅ 3. Express setup
+// ✅ Express setup
 app.use(express.json());
 
 // ✅ 4. Lazy-load DB (after CORS)
