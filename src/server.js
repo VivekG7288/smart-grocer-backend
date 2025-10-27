@@ -1,27 +1,32 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
+import mongoose from "mongoose"; // Add mongoose import
 
-dotenv.config(); // load .env first
+// Load environment variables first
+dotenv.config();
 
 const app = express();
 
-// Simple CORS configuration that definitely works with credentials
+// 1. CORS configuration
 const corsOptions = {
-    origin: 'https://smart-grocer-frontend.pages.dev',
+    origin: ['https://smart-grocer-frontend.pages.dev', 'http://localhost:5173'],
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
 };
 
-// Apply CORS middleware
-app.use(cors(corsOptions));
+// 2. Apply middlewares in correct order
+app.use(cors(corsOptions));  // CORS first
+app.use(express.json());     // Then body parsing
+app.use(express.urlencoded({ extended: true }));
 
-// Ensure OPTIONS requests work
-app.options('*', cors(corsOptions));
-
-// ✅ Express setup
-app.use(express.json());
+// 3. Handle all OPTIONS requests
+app.options('*', (req, res) => {
+    res.status(204).end();
+});
 
 // ✅ 4. Lazy-load DB (after CORS)
 import connectDB from "./config/db.js";
@@ -80,11 +85,31 @@ app.use("/api/auth", authRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// ✅ 6. Root route (for uptime checks)
-app.get("/", (req, res) => {
-  res.send("Smart Grocer backend is running ✅");
+// Error handling middleware (must be after routes)
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({
+        status: 'error',
+        message: err.message
+    });
 });
 
-// ✅ 7. Server start
+// Handle 404s
+app.use((req, res) => {
+    res.status(404).json({
+        status: 'error',
+        message: `Cannot ${req.method} ${req.url}`
+    });
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`✅ Smart Grocer Server running on port ${PORT}`));
+const server = app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`✅ CORS enabled for: ${corsOptions.origin}`);
+});
+
+// Handle server errors
+server.on('error', (error) => {
+    console.error('Server error:', error);
+    process.exit(1);
+});
