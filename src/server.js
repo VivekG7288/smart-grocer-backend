@@ -17,8 +17,11 @@ connectDB();
 const app = express();
 app.use(express.json());
 
-// Route registrations
-app.use("/api/users", userRoutes);
+const cors = require("cors");
+app.use(cors({
+    origin: "https://smart-grocer-frontend.pages.dev",
+    credentials: true
+}));
 app.use("/api/shops", shopRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
