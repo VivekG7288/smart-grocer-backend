@@ -8,19 +8,23 @@ dotenv.config();
 
 const app = express();
 
-// === 1. CORS configuration: Apply FIRST ===
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://smart-grocer-frontend.pages.dev');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
-    }
-    next();
+// === 1. Import and use CORS middleware ===
+const corsOptions = {
+    origin: 'https://smart-grocer-frontend.pages.dev',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
+    optionsSuccessStatus: 200,
+    preflightContinue: false,
+    maxAge: 86400 // Preflight results cache for 24 hours
+};
+
+// Enable CORS for all routes
+app.use(cors(corsOptions));
+
+// Explicitly handle OPTIONS for all routes
+app.options('*', (req, res) => {
+    res.status(200).send();
 });
 
 // Additional security headers
@@ -51,6 +55,17 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+
+// Mount all routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/shops', shopRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/pantry', pantryRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/addresses', addressRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Root health check
 app.get("/", (req, res) => {
