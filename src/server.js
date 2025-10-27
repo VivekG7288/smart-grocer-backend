@@ -18,31 +18,22 @@ connectDB();
 const app = express();
 app.use(express.json());
 
-// CORS: allow deployed frontend and localhost for local dev
 const allowedOrigins = [
-    "https://smart-grocer-frontend.pages.dev",
-    "http://localhost:5173",
-    "http://localhost:3000"
+  "https://smart-grocer-frontend.pages.dev",
+  "http://localhost:5173",
+  "http://localhost:3000"
 ];
 
-app.use(cors({
-        origin: function(origin, callback) {
-            // allow requests with no origin (like mobile apps or curl)
-            if (!origin) return callback(null, true);
-            if (allowedOrigins.indexOf(origin) !== -1) {
-                return callback(null, true);
-            } else {
-                return callback(new Error("Not allowed by CORS"));
-            }
-        },
-        credentials: true
-}));
+const corsOptions = {
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
-// Ensure preflight requests receive the CORS headers
-app.options("*", cors({
-    origin: allowedOrigins,
-    credentials: true
-}));
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
 app.use("/api/users", userRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/products", productRoutes);
@@ -54,6 +45,4 @@ app.use("/api/addresses", addressRoutes);
 app.use("/api/payments", paymentRoutes);
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-    console.log(`Smart Grocery Server running on port ${PORT}`)
-);
+app.listen(PORT, () => console.log(`Smart Grocery Server running on port ${PORT}`));
