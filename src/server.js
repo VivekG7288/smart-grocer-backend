@@ -1,38 +1,34 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import mongoose from "mongoose"; // Add mongoose import
+import mongoose from "mongoose";
 
 // Load environment variables first
 dotenv.config();
 
 const app = express();
 
-// 1. CORS configuration
+// === 1. CORS configuration: Apply FIRST ===
 const corsOptions = {
     origin: ['https://smart-grocer-frontend.pages.dev', 'http://localhost:5173'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    preflightContinue: false,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     optionsSuccessStatus: 204
 };
+app.use(cors(corsOptions));  // CORS BEFORE everything else
 
-// 2. Apply middlewares in correct order
-app.use(cors(corsOptions));  // CORS first
-app.use(express.json());     // Then body parsing
+// === 2. Body parsing middleware ===
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 3. Handle all OPTIONS requests
-app.options('*', (req, res) => {
-    res.status(204).end();
-});
+// === 3. (NO manual .options handler – let CORS handle preflight) ===
 
-// ✅ 4. Lazy-load DB (after CORS)
+// === 4. DB connection ===
 import connectDB from "./config/db.js";
 connectDB();
 
-// ✅ 5. Routes
+// === 5. Routes ===
 import userRoutes from "./routes/userRoutes.js";
 import shopRoutes from "./routes/shopRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
@@ -43,9 +39,9 @@ import authRoutes from "./routes/authRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
-// Basic root health check
+// Root health check
 app.get("/", (req, res) => {
-  res.json({ 
+  res.json({
     status: "ok",
     message: "Smart Grocer Backend is running",
     time: new Date().toISOString()
@@ -62,7 +58,7 @@ app.get("/api/health", async (req, res) => {
       time: new Date().toISOString(),
       env: process.env.NODE_ENV || "development",
       cors: {
-        allowedOrigins,
+        allowedOrigins: corsOptions.origin,
         credentials: true
       }
     });
@@ -75,6 +71,7 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
+// Main API routes
 app.use("/api/users", userRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/products", productRoutes);
@@ -85,7 +82,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// Error handling middleware (must be after routes)
+// Error handling middleware (after all routes)
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({
@@ -94,7 +91,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Handle 404s
+// 404 Handler
 app.use((req, res) => {
     res.status(404).json({
         status: 'error',
