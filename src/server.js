@@ -1,6 +1,5 @@
 import express from "express";
 import dotenv from "dotenv";
-import cors from "cors";
 import mongoose from "mongoose";
 
 // Load environment variables first
@@ -8,23 +7,16 @@ dotenv.config();
 
 const app = express();
 
-// === 1. Import and use CORS middleware ===
-const corsOptions = {
-    origin: 'https://smart-grocer-frontend.pages.dev',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
-    optionsSuccessStatus: 200,
-    preflightContinue: false,
-    maxAge: 86400 // Preflight results cache for 24 hours
-};
+// Import custom CORS middleware
+import corsMiddleware from './middleware/cors.js';
 
-// Enable CORS for all routes
-app.use(cors(corsOptions));
+// Apply CORS middleware before any other middleware
+app.use(corsMiddleware);
 
-// Explicitly handle OPTIONS for all routes
-app.options('*', (req, res) => {
-    res.status(200).send();
+// Log all requests for debugging
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    next();
 });
 
 // Additional security headers
