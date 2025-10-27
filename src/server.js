@@ -18,22 +18,37 @@ connectDB();
 const app = express();
 app.use(express.json());
 
+// ✅ Allowed frontend origins
 const allowedOrigins = [
   "https://smart-grocer-frontend.pages.dev",
   "http://localhost:5173",
   "http://localhost:3000"
 ];
 
-const corsOptions = {
+// ✅ Universal CORS middleware (Render + Cloudflare safe)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,PATCH,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  // ⚡ Handle preflight (OPTIONS) requests immediately
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// ✅ Use cors() for additional safety (optional but harmless)
+app.use(cors({
   origin: allowedOrigins,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
+  credentials: true
+}));
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
-
+// ✅ API Routes
 app.use("/api/users", userRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/products", productRoutes);
@@ -44,5 +59,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/payments", paymentRoutes);
 
+// ✅ Server listen
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Smart Grocery Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Smart Grocery Server running on port ${PORT}`));
