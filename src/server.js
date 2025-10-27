@@ -7,15 +7,29 @@ dotenv.config();
 
 const app = express();
 
-// Import custom CORS middleware
-import corsMiddleware from './middleware/cors.js';
-
-// Apply CORS middleware before any other middleware
-app.use(corsMiddleware);
+// CORS handling - must be first
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin === 'https://smart-grocer-frontend.pages.dev') {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        
+        // Handle preflight
+        if (req.method === 'OPTIONS') {
+            return res.status(200).json({
+                status: 'ok',
+                message: 'Preflight request successful'
+            });
+        }
+    }
+    next();
+});
 
 // Log all requests for debugging
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin}`);
     next();
 });
 
@@ -78,7 +92,7 @@ app.get("/api/health", async (req, res) => {
       time: new Date().toISOString(),
       env: process.env.NODE_ENV || "development",
       cors: {
-        allowedOrigins: corsOptions.origin,
+        allowedOrigins: ['https://smart-grocer-frontend.pages.dev'],
         credentials: true
       }
     });
