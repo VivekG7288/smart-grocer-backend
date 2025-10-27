@@ -16,6 +16,7 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization']
 };
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable pre-flight across all routes
 
 // Log all requests for debugging
 app.use((req, res, next) => {
