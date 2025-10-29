@@ -79,7 +79,8 @@ const geocodeAddress = async (address) => {
 // Create new shop
 export const createShop = async (req, res) => {
     try {
-        const { ownerId, name, phone, address, deliveryRadius } = req.body;
+        const { ownerId, name, phone, address, deliveryRadius, homeDelivery } =
+            req.body;
 
         const created = await createShopRecord({
             ownerId,
@@ -87,6 +88,7 @@ export const createShop = async (req, res) => {
             phone,
             address,
             deliveryRadius,
+            homeDelivery,
         });
         res.status(201).json(created);
     } catch (err) {
@@ -104,6 +106,7 @@ export const createShopRecord = async ({
     phone,
     address,
     deliveryRadius,
+    homeDelivery,
 }) => {
     if (!ownerId || !name || !address) {
         throw new Error("Owner ID, shop name, and address are required");
@@ -134,6 +137,7 @@ export const createShopRecord = async ({
             area: locationData.area,
         },
         deliveryRadius: deliveryRadius || 5,
+        homeDelivery: typeof homeDelivery === "boolean" ? homeDelivery : false,
         isActive: true,
     });
 
