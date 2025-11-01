@@ -152,7 +152,7 @@ export const getShops = async (req, res) => {
         console.log("Getting all shops...");
         const shops = await Shop.find({ isActive: true }).populate(
             "ownerId",
-            "name email"
+            "name email phone"
         );
         console.log("Found shops:", shops.length);
         res.json(shops);
@@ -166,7 +166,7 @@ export const getShopById = async (req, res) => {
     try {
         const shop = await Shop.findById(req.params.id).populate(
             "ownerId",
-            "name email"
+            "name email phone"
         );
         if (!shop) {
             return res.status(404).json({ error: "Shop not found" });

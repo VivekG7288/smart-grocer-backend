@@ -3,10 +3,12 @@ import User from "../models/User.js";
 
 export const register = async (req, res) => {
     try {
-        const { name, email, password, role, address, picture } = req.body;
+        const { name, email, phone, password, role, address, picture } =
+            req.body;
         const user = new User({
             name,
             email,
+            phone,
             password,
             role,
             address,
@@ -17,6 +19,7 @@ export const register = async (req, res) => {
             _id: user._id,
             name: user.name,
             email: user.email,
+            phone: user.phone,
             role: user.role,
             address: user.address,
             picture: user.picture,
@@ -41,6 +44,7 @@ export const login = async (req, res) => {
             _id: user._id,
             name: user.name,
             email: user.email,
+            phone: user.phone,
             role: user.role,
             address: user.address,
             picture: user.picture,

@@ -44,7 +44,7 @@ export const createOrder = async (req, res) => {
         await order.save();
 
         // Populate references for response
-        await order.populate("customerId", "name email");
+        await order.populate("customerId", "name email phone");
         await order.populate("shopId", "name ownerId");
         await order.populate("items.productId", "name price");
 
@@ -108,7 +108,7 @@ export const getOrders = async (req, res) => {
 export const getOrderById = async (req, res) => {
     try {
         const order = await Order.findById(req.params.id)
-            .populate("customerId", "name email")
+            .populate("customerId", "name email phone")
             .populate("shopId", "name")
             .populate("items.productId", "name price");
         if (!order) return res.status(404).json({ error: "Order not found" });
