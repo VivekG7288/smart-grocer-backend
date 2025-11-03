@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema(
         phone: { type: Number, required: true, unique: true },
         password: { type: String, required: true },
         role: { type: String, enum: Object.values(UserRole), required: true },
-        address: { type: String },
         picture: { type: String },
         subscriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
     },

@@ -3,15 +3,13 @@ import User from "../models/User.js";
 
 export const register = async (req, res) => {
     try {
-        const { name, email, phone, password, role, address, picture } =
-            req.body;
+        const { name, email, phone, password, role, picture } = req.body;
         const user = new User({
             name,
             email,
             phone,
             password,
             role,
-            address,
             picture,
         });
         await user.save();
@@ -21,7 +19,6 @@ export const register = async (req, res) => {
             email: user.email,
             phone: user.phone,
             role: user.role,
-            address: user.address,
             picture: user.picture,
         });
     } catch (err) {
@@ -46,7 +43,6 @@ export const login = async (req, res) => {
             email: user.email,
             phone: user.phone,
             role: user.role,
-            address: user.address,
             picture: user.picture,
             // token: user.token,
         });
