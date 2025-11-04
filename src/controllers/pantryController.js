@@ -101,7 +101,11 @@ export const updatePantryItem = async (req, res) => {
 
         // If refill requested, create notification for shopkeeper
         if (status === "REFILL_REQUESTED") {
-            await createRefillNotification(pantryItem);
+            const updatedItem = await PantryItem.findById(id)
+                .populate("userId", "name")
+                .populate("shopId", "name ownerId");
+
+            await createRefillNotification(updatedItem);
         }
 
         res.json(pantryItem);
@@ -148,9 +152,12 @@ export const confirmRefillRequest = async (req, res) => {
         pantryItem.status = status;
 
         if (status === "DELIVERED") {
-            pantryItem.currentPacks = pantryItem.packsOwned; // Reset to full stock
+            // ✅ update total packs and reset to full stock
+            pantryItem.packsOwned =
+                pantryItem.currentPacks || pantryItem.packsOwned;
+            pantryItem.currentPacks = pantryItem.packsOwned;
             pantryItem.lastRefilled = new Date();
-            pantryItem.status = "STOCKED";
+            pantryItem.status = "STOCKED"; // pantry restocked
         }
 
         await pantryItem.save();
@@ -173,12 +180,12 @@ const createRefillNotification = async (pantryItem) => {
         pantryItemId: pantryItem._id,
         type: "REFILL_REQUEST",
         title: "🔔 Refill Request",
-        message: `${pantryItem.userId.name} needs ${pantryItem.productName} refill`,
+        message: `${pantryItem.userId.name} needs ${pantryItem.productName} refill (${pantryItem.currentPacks} packs remaining)`,
         actionRequired: true,
         metadata: {
             customerName: pantryItem.userId.name,
             productName: pantryItem.productName,
-            quantity: pantryItem.packsOwned,
+            quantity: pantryItem.currentPacks, // ✅ Now uses updated value
             address:
                 pantryItem.userId.location?.address || "Address not available",
         },
