@@ -121,12 +121,78 @@ export const getOrderById = async (req, res) => {
 // Update order status/details
 export const updateOrderStatus = async (req, res) => {
     try {
-        const order = await Order.findByIdAndUpdate(req.params.id, req.body, {
-            new: true,
-        });
+        const { status } = req.body; // e.g., "CONFIRMED", "SHIPPED", "DELIVERED"
+
+        // Fetch order and populate customerId and shopId
+        const order = await Order.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true }
+        )
+            .populate("customerId", "_id name email") // essential
+            .populate("shopId", "_id name ownerId");
+
         if (!order) return res.status(404).json({ error: "Order not found" });
+
+        // Send notification to customer
+        if (status && order.customerId) {
+            let title = "";
+            let message = "";
+
+            switch (status.toLowerCase()) {
+                case "confirmed":
+                    title = "✅ Order Confirmed";
+                    message = `Your order from ${order.shopId.name} has been confirmed.`;
+                    break;
+                case "shipped":
+                    title = "📦 Order Shipped";
+                    message = `Good news! Your order from ${order.shopId.name} is on its way.`;
+                    break;
+                case "delivered":
+                    title = "🎉 Order Delivered";
+                    message = `Your order from ${order.shopId.name} has been delivered successfully.`;
+                    break;
+                case "cancelled":
+                    title = "❌ Order Cancelled";
+                    message = `Your order from ${order.shopId.name} has been cancelled.`;
+                    break;
+                default:
+                    break;
+            }
+
+            if (title && message) {
+                try {
+                    const itemsSummary = order.items
+                        .map(
+                            (i) => `${i.quantity} x ${i.productId?.name || ""}`
+                        )
+                        .join(", ");
+
+                    await new Notification({
+                        recipientId: order.customerId._id,
+                        senderId: order.shopId.ownerId,
+                        shopId: order.shopId._id,
+                        type: "ORDER",
+                        title,
+                        message,
+                        actionRequired: false,
+                        metadata: {
+                            customerName: order.customerId.name,
+                            items: itemsSummary,
+                            address: `${order.deliveryAddress.area || ""}, ${
+                                order.deliveryAddress.city || ""
+                            } ${order.deliveryAddress.pincode || ""}`,
+                        },
+                    }).save();
+                } catch (notifyErr) {
+                    console.error("Failed to create notification:", notifyErr);
+                }
+            }
+        }
+
         res.json(order);
     } catch (err) {
+        console.error("Error updating order status:", err);
         res.status(400).json({ error: err.message });
     }
 };
