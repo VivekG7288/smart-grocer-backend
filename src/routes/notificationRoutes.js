@@ -1,14 +1,15 @@
-import express from 'express';
+import express from "express";
 import {
-  getUserNotifications,
-  markAsRead,
-  getUnreadCount
-} from '../controllers/notificationController.js';
+    getUserNotifications,
+    markAsRead,
+    getUnreadCount,
+    deleteNotification,
+} from "../controllers/notificationController.js";
 
 const router = express.Router();
 
-router.get('/user/:userId', getUserNotifications);
-router.put('/:id/read', markAsRead);
-router.get('/user/:userId/unread-count', getUnreadCount);
+router.get("/user/:userId", getUserNotifications);
+router.get("/user/:userId/unread-count", getUnreadCount);
+router.delete("/:id", deleteNotification);
 
 export default router;
