@@ -229,3 +229,19 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
 
     await notification.save();
 };
+
+//remove item from pantry
+export const deletePantryItem = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const deleteItem = await PantryItem.findByIdAndDelete(id);
+
+        if (!deleteItem) {
+            return res.status(404).json({ error: "Pantry item not found" });
+        }
+
+        res.json({ message: "Pantry item deleted successfully", id });
+    } catch (error) {
+        console.error("Error while removing item from pantry", err);
+    }
+};
