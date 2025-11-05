@@ -1,7 +1,6 @@
 import express from "express";
 import {
     getUserNotifications,
-    markAsRead,
     getUnreadCount,
     deleteNotification,
 } from "../controllers/notificationController.js";
