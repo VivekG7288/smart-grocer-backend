@@ -10,7 +10,23 @@ export const createOrder = async (req, res) => {
     try {
         console.log("Creating order with data:", req.body);
 
-        const order = new Order(req.body);
+        // Get customer details
+        const customer = await User.findById(req.body.customerId);
+        if (!customer) {
+            return res.status(400).json({ error: "Customer not found" });
+        }
+
+        // Add customer contact information
+        const orderData = {
+            ...req.body,
+            customerContact: {
+                name: customer.name,
+                email: customer.email,
+                phone: customer.phone // Get phone from customer profile
+            }
+        };
+
+        const order = new Order(orderData);
 
         // Validate delivery address
         if (
@@ -46,84 +62,51 @@ export const createOrder = async (req, res) => {
         await order.save();
 
         // Populate references for response
+        // Populate all necessary references
         await order.populate("customerId", "name email phone fcmToken");
         await order.populate("shopId", "name ownerId");
-        
-        // Get shop owner's FCM token
-        const shopOwner = await User.findById(order.shopId.ownerId, 'fcmToken');
-
-        // Create and send notification to shop owner
-        const shopNotification = new Notification({
-            userId: order.shopId.ownerId,
-            title: "New Order Received",
-            message: `New order #${order._id} received from ${order.customerId.name}`,
-            type: "ORDER_RECEIVED",
-            data: { orderId: order._id }
-        });
-        await shopNotification.save();
-
-        // Send FCM notification to shop owner
-        if (shopOwner.fcmToken) {
-            await sendNotification(shopOwner.fcmToken, {
-                title: "New Order Received",
-                body: `New order #${order._id} received from ${order.customerId.name}`,
-                data: {
-                    type: "ORDER_RECEIVED",
-                    orderId: order._id.toString()
-                }
-            });
-        }
         await order.populate("items.productId", "name price");
 
         console.log("Order created successfully:", order);
 
-        // Create notification for shop owner about new order
-        try {
-            const shopOwnerId = order.shopId.ownerId;
-            const customerName = order.customerId?.name || "Customer";
+        // Get shop owner's FCM token
+        const shopOwner = await User.findById(order.shopId.ownerId, 'fcmToken name');
+        
+        // Build items summary for notification
+        const itemsSummary = order.items
+            .map((item) => `${item.quantity} x ${item.productId.name}`)
+            .join(", ");
 
-            // Build a brief items summary
-            const itemsSummary = order.items
-                .map((i) => `${i.quantity} x ${i.productId?.name || ""}`)
-                .join(", ");
-
-            const orderNotification = new Notification({
-                recipientId: shopOwnerId,
-                senderId: order.customerId?._id,
-                shopId: order.shopId._id,
-                type: "ORDER",
-                title: "🛒 New Order Received",
-                message: `${customerName} placed an order: ${itemsSummary}`,
-                actionRequired: true,
-                metadata: {
-                    orderId: order._id.toString(),
-                    customerName,
-                    items: itemsSummary,
-                    address: `${order.deliveryAddress.area || ""}, ${
-                        order.deliveryAddress.city || ""
-                    } ${order.deliveryAddress.pincode || ""}`,
-                },
-            });
-
-            await orderNotification.save();
-
-            // Send Firebase push notification to shop owner
-            try {
-                const ownerUser = await User.findById(shopOwnerId);
-                if (ownerUser?.fcmToken) {
-                    await sendNotification(
-                        [ownerUser.fcmToken],
-                        orderNotification.title,
-                        orderNotification.message,
-                        { orderId: order._id.toString(), type: 'ORDER' }
-                    );
-                }
-            } catch (pushErr) {
-                console.error('Failed to send order push notification:', pushErr);
+        // Create notification for shop owner
+        const notification = new Notification({
+            userId: order.shopId.ownerId,
+            senderId: order.customerId._id,
+            shopId: order.shopId._id,
+            type: "ORDER_RECEIVED",
+            title: "🛒 New Order Received",
+            message: `${order.customerContact.name} placed an order: ${itemsSummary}`,
+            data: {
+                orderId: order._id.toString(),
+                customerName: order.customerContact.name,
+                items: itemsSummary,
+                address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`
             }
-        } catch (notifyErr) {
-            console.error("Error creating order notification:", notifyErr);
+        });
+        await notification.save();
+
+        // Send FCM notification to shop owner
+        if (shopOwner?.fcmToken) {
+            await sendNotification(shopOwner.fcmToken, {
+                title: "🛒 New Order Received",
+                body: `${order.customerContact.name} placed an order: ${itemsSummary}`,
+                data: {
+                    type: "ORDER_RECEIVED",
+                    orderId: order._id.toString(),
+                    items: itemsSummary
+                }
+            });
         }
+
         res.status(201).json(order);
     } catch (err) {
         console.error("Error creating order:", err);

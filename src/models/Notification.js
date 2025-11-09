@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(
     {
-        recipientId: {
+        userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true,
@@ -22,6 +22,8 @@ const notificationSchema = new mongoose.Schema(
                 "DELIVERED",
                 "CANCELLED",
                 "ORDER",
+                "ORDER_RECEIVED",
+                "LOW_INVENTORY"
             ],
             required: true,
         },
