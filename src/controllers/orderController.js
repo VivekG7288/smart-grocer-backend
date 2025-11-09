@@ -3,7 +3,7 @@ import Product from "../models/Product.js";
 import Notification from "../models/Notification.js";
 import Shop from "../models/Shop.js";
 import User from "../models/User.js";
-import { sendNotification } from "../utils/oneSignal.js";
+import { sendNotification } from "../utils/firebase.js";
 
 // Create new order
 export const createOrder = async (req, res) => {
@@ -82,12 +82,12 @@ export const createOrder = async (req, res) => {
 
             await orderNotification.save();
 
-            // send push notification to shop owner (if registered)
+            // Send Firebase push notification to shop owner
             try {
                 const ownerUser = await User.findById(shopOwnerId);
-                if (ownerUser?.oneSignalPlayerId) {
+                if (ownerUser?.fcmToken) {
                     await sendNotification(
-                        [ownerUser.oneSignalPlayerId],
+                        [ownerUser.fcmToken],
                         orderNotification.title,
                         orderNotification.message,
                         { orderId: order._id.toString(), type: 'ORDER' }
@@ -202,12 +202,12 @@ export const updateOrderStatus = async (req, res) => {
                         },
                     }).save();
 
-                    // Push notification to customer
+                    // Send Firebase push notification to customer
                     try {
                         const customerUser = await User.findById(order.customerId._id);
-                        if (customerUser?.oneSignalPlayerId) {
+                        if (customerUser?.fcmToken) {
                             await sendNotification(
-                                [customerUser.oneSignalPlayerId],
+                                [customerUser.fcmToken],
                                 title,
                                 message,
                                 { orderId: order._id.toString(), type: 'ORDER_STATUS' }

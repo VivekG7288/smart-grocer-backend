@@ -14,8 +14,8 @@ const userSchema = new mongoose.Schema(
         password: { type: String, required: true },
         role: { type: String, enum: Object.values(UserRole), required: true },
         picture: { type: String },
-        // OneSignal player id for push notifications (web/mobile)
-        oneSignalPlayerId: { type: String },
+        // Firebase Cloud Messaging token for push notifications
+        fcmToken: { type: String },
         subscriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
     },
     { timestamps: true }

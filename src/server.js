@@ -13,6 +13,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import addressRoutes from "./routes/addressRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import testNotificationRoutes from "./routes/notificationTestRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +59,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/addresses", addressRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/test-notifications", testNotificationRoutes);
 
 // 7. Health check endpoints
 app.get("/", (req, res) => {

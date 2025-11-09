@@ -2,7 +2,7 @@ import PantryItem from "../models/PantryItem.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import Shop from "../models/Shop.js";
-import { sendNotification } from "../utils/oneSignal.js";
+import { sendNotification } from "../utils/firebase.js";
 
 // Add item to consumer's pantry
 export const addToPantry = async (req, res) => {
@@ -194,12 +194,12 @@ const createRefillNotification = async (pantryItem) => {
 
     await notification.save();
 
-    // Send push notification to shop owner if available
+    // Send Firebase push notification to shop owner
     try {
         const owner = await User.findById(pantryItem.shopId.ownerId);
-        if (owner?.oneSignalPlayerId) {
+        if (owner?.fcmToken) {
             await sendNotification([
-                owner.oneSignalPlayerId,
+                owner.fcmToken,
             ],
             notification.title,
             notification.message,
@@ -246,12 +246,12 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
 
     await notification.save();
 
-    // Send push notification to consumer
+    // Send Firebase push notification to consumer
     try {
         const consumer = await User.findById(pantryItem.userId._id || pantryItem.userId);
-        if (consumer?.oneSignalPlayerId) {
+        if (consumer?.fcmToken) {
             await sendNotification([
-                consumer.oneSignalPlayerId,
+                consumer.fcmToken,
             ],
             notification.title,
             notification.message,

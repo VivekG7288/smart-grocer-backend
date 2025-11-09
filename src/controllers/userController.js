@@ -57,21 +57,21 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// Save OneSignal player id for a user
-export const saveOneSignalId = async (req, res) => {
+// Save Firebase FCM token for a user
+export const saveFCMToken = async (req, res) => {
   try {
-    const { userId, playerId } = req.body;
-    if (!userId || !playerId) return res.status(400).json({ error: 'userId and playerId are required' });
+    const { userId, token } = req.body;
+    if (!userId || !token) return res.status(400).json({ error: 'userId and token are required' });
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { oneSignalPlayerId: playerId },
+      { fcmToken: token },
       { new: true }
     );
 
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    res.json({ message: 'OneSignal player id saved', user });
+    res.json({ message: 'FCM token saved', user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
