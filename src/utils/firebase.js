@@ -52,39 +52,39 @@ export const messaging = admin.messaging();
  * @param {string} body - Notification body
  * @param {Object} data - Optional data payload
  */
-export async function sendNotification(tokens, title, body, data = {}) {
-  if (!tokens || tokens.length === 0) {
-    console.warn('No FCM tokens provided for notification');
+export async function sendNotification(token, { title, body, data = {} }) {
+  if (!token) {
+    console.warn('No FCM token provided for notification');
     return;
   }
 
   try {
     const message = {
+      token, // single token
       notification: {
         title,
         body,
       },
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: '/vite.svg', // Add your app icon path
+          click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+        fcm_options: {
+          link: '/' // The URL to open when the notification is clicked
+        }
+      },
       data: {
         ...data,
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
-      },
-      tokens: Array.isArray(tokens) ? tokens : [tokens],
+      }
     };
 
-    const response = await messaging.sendMulticast(message);
+    const response = await messaging.send(message);
     console.log('Successfully sent message:', response);
-
-    // Handle tokens that failed
-    if (response.failureCount > 0) {
-      const failedTokens = [];
-      response.responses.forEach((resp, idx) => {
-        if (!resp.success) {
-          failedTokens.push(tokens[idx]);
-        }
-      });
-      console.log('List of tokens that caused failures:', failedTokens);
-      return failedTokens;
-    }
+    return response;
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;

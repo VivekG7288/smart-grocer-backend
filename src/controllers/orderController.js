@@ -102,7 +102,8 @@ export const createOrder = async (req, res) => {
                 data: {
                     type: "ORDER_RECEIVED",
                     orderId: order._id.toString(),
-                    items: itemsSummary
+                    items: itemsSummary,
+                    timestamp: new Date().toISOString()
                 }
             });
         }
