@@ -46,8 +46,33 @@ export const createOrder = async (req, res) => {
         await order.save();
 
         // Populate references for response
-        await order.populate("customerId", "name email phone");
+        await order.populate("customerId", "name email phone fcmToken");
         await order.populate("shopId", "name ownerId");
+        
+        // Get shop owner's FCM token
+        const shopOwner = await User.findById(order.shopId.ownerId, 'fcmToken');
+
+        // Create and send notification to shop owner
+        const shopNotification = new Notification({
+            userId: order.shopId.ownerId,
+            title: "New Order Received",
+            message: `New order #${order._id} received from ${order.customerId.name}`,
+            type: "ORDER_RECEIVED",
+            data: { orderId: order._id }
+        });
+        await shopNotification.save();
+
+        // Send FCM notification to shop owner
+        if (shopOwner.fcmToken) {
+            await sendNotification(shopOwner.fcmToken, {
+                title: "New Order Received",
+                body: `New order #${order._id} received from ${order.customerId.name}`,
+                data: {
+                    type: "ORDER_RECEIVED",
+                    orderId: order._id.toString()
+                }
+            });
+        }
         await order.populate("items.productId", "name price");
 
         console.log("Order created successfully:", order);
