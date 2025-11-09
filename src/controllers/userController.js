@@ -56,3 +56,23 @@ export const deleteUser = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Save OneSignal player id for a user
+export const saveOneSignalId = async (req, res) => {
+  try {
+    const { userId, playerId } = req.body;
+    if (!userId || !playerId) return res.status(400).json({ error: 'userId and playerId are required' });
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { oneSignalPlayerId: playerId },
+      { new: true }
+    );
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ message: 'OneSignal player id saved', user });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

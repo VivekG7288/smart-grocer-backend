@@ -2,6 +2,8 @@ import Order from "../models/Order.js";
 import Product from "../models/Product.js";
 import Notification from "../models/Notification.js";
 import Shop from "../models/Shop.js";
+import User from "../models/User.js";
+import { sendNotification } from "../utils/oneSignal.js";
 
 // Create new order
 export const createOrder = async (req, res) => {
@@ -79,6 +81,21 @@ export const createOrder = async (req, res) => {
             });
 
             await orderNotification.save();
+
+            // send push notification to shop owner (if registered)
+            try {
+                const ownerUser = await User.findById(shopOwnerId);
+                if (ownerUser?.oneSignalPlayerId) {
+                    await sendNotification(
+                        [ownerUser.oneSignalPlayerId],
+                        orderNotification.title,
+                        orderNotification.message,
+                        { orderId: order._id.toString(), type: 'ORDER' }
+                    );
+                }
+            } catch (pushErr) {
+                console.error('Failed to send order push notification:', pushErr);
+            }
         } catch (notifyErr) {
             console.error("Error creating order notification:", notifyErr);
         }
@@ -184,6 +201,21 @@ export const updateOrderStatus = async (req, res) => {
                             } ${order.deliveryAddress.pincode || ""}`,
                         },
                     }).save();
+
+                    // Push notification to customer
+                    try {
+                        const customerUser = await User.findById(order.customerId._id);
+                        if (customerUser?.oneSignalPlayerId) {
+                            await sendNotification(
+                                [customerUser.oneSignalPlayerId],
+                                title,
+                                message,
+                                { orderId: order._id.toString(), type: 'ORDER_STATUS' }
+                            );
+                        }
+                    } catch (pushErr) {
+                        console.error('Failed to send order status push notification:', pushErr);
+                    }
                 } catch (notifyErr) {
                     console.error("Failed to create notification:", notifyErr);
                 }

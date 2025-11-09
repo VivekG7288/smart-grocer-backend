@@ -2,6 +2,7 @@ import PantryItem from "../models/PantryItem.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
 import Shop from "../models/Shop.js";
+import { sendNotification } from "../utils/oneSignal.js";
 
 // Add item to consumer's pantry
 export const addToPantry = async (req, res) => {
@@ -192,6 +193,22 @@ const createRefillNotification = async (pantryItem) => {
     });
 
     await notification.save();
+
+    // Send push notification to shop owner if available
+    try {
+        const owner = await User.findById(pantryItem.shopId.ownerId);
+        if (owner?.oneSignalPlayerId) {
+            await sendNotification([
+                owner.oneSignalPlayerId,
+            ],
+            notification.title,
+            notification.message,
+            { pantryItemId: pantryItem._id.toString(), type: 'REFILL_REQUEST' }
+            );
+        }
+    } catch (err) {
+        console.error('Failed to send refill push notification:', err);
+    }
 };
 
 /// Helper function to create status update notification
@@ -228,6 +245,22 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
     });
 
     await notification.save();
+
+    // Send push notification to consumer
+    try {
+        const consumer = await User.findById(pantryItem.userId._id || pantryItem.userId);
+        if (consumer?.oneSignalPlayerId) {
+            await sendNotification([
+                consumer.oneSignalPlayerId,
+            ],
+            notification.title,
+            notification.message,
+            { pantryItemId: pantryItem._id.toString(), type: notificationType }
+            );
+        }
+    } catch (err) {
+        console.error('Failed to send pantry status push notification:', err);
+    }
 };
 
 //remove item from pantry

@@ -4,7 +4,8 @@ import {
   getUsers,
   getUserById,
   updateUser,
-  deleteUser
+  deleteUser,
+  saveOneSignalId,
 } from '../controllers/userController.js';
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router.put('/:id', updateUser);
 
 // Delete a user by ID
 router.delete('/:id', deleteUser);
+
+// Save OneSignal player id for current user (body: { userId, playerId })
+router.post('/onesignal', saveOneSignalId);
 
 export default router;
