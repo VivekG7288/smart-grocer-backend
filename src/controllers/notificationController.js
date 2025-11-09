@@ -1,4 +1,6 @@
 import Notification from "../models/Notification.js";
+import User from "../models/User.js";
+import { sendNotification } from "../utils/oneSignal.js";
 
 // Get user notifications
 export const getUserNotifications = async (req, res) => {
@@ -12,6 +14,25 @@ export const getUserNotifications = async (req, res) => {
             .limit(50);
 
         res.json(notifications);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// Test send a push notification to a user (body: { userId, title, message })
+export const sendTestPush = async (req, res) => {
+    try {
+        const { userId, title, message } = req.body;
+        if (!userId || !title || !message) return res.status(400).json({ error: 'userId, title and message required' });
+
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        if (!user.oneSignalPlayerId) return res.status(400).json({ error: 'User has no OneSignal player id saved' });
+
+        const resp = await sendNotification([user.oneSignalPlayerId], title, message, { test: true });
+
+        res.json({ message: 'Push sent (OneSignal response)', resp });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
