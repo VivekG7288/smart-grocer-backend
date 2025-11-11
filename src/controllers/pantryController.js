@@ -177,6 +177,7 @@ const createRefillNotification = async (pantryItem) => {
     const notification = new Notification({
         recipientId: pantryItem.shopId.ownerId,
         senderId: pantryItem.userId._id,
+        userId: pantryItem.shopId.ownerId,
         shopId: pantryItem.shopId._id,
         pantryItemId: pantryItem._id,
         type: "REFILL_REQUEST",
@@ -235,6 +236,7 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
 
     const notification = new Notification({
         recipientId: pantryItem.userId._id,
+        userId: pantryItem.userId._id || pantryItem.userId,
         senderId: pantryItem.shopId.ownerId,
         shopId: pantryItem.shopId._id,
         pantryItemId: pantryItem._id,
