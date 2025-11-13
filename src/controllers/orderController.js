@@ -150,99 +150,97 @@ export const getOrderById = async (req, res) => {
 // Update order status/details
 export const updateOrderStatus = async (req, res) => {
     try {
-        const { status } = req.body; // e.g., "CONFIRMED", "SHIPPED", "DELIVERED"
+        const { status } = req.body;
 
-        // Fetch updated order and populate all required fields
+        // Normalize status
+        const cleanStatus = status?.trim().toLowerCase();
+        console.log("⚡ CLEANED STATUS:", JSON.stringify(cleanStatus));
+
+        // Fetch and update order
         const order = await Order.findByIdAndUpdate(
             req.params.id,
-            { status },
+            { status: cleanStatus.toUpperCase() },
             { new: true }
         )
-            .populate("customerId", "_id name email phone")
+            .populate("customerId", "_id name email phone fcmToken")
             .populate("shopId", "_id name ownerId")
             .populate("items.productId", "name price");
 
         if (!order) {
+            console.log("❌ Order not found");
             return res.status(404).json({ error: "Order not found" });
         }
 
-        // Prepare status notification title & message
+        // Status → Notification mapping
         let title = "";
         let message = "";
 
-        switch (status?.toLowerCase()) {
+        switch (cleanStatus) {
             case "confirmed":
                 title = "✅ Order Confirmed";
                 message = `Your order from ${order.shopId.name} has been confirmed.`;
                 break;
+
             case "shipped":
                 title = "📦 Order Shipped";
                 message = `Good news! Your order from ${order.shopId.name} is on its way.`;
                 break;
+
             case "delivered":
                 title = "🎉 Order Delivered";
                 message = `Your order from ${order.shopId.name} has been delivered successfully.`;
                 break;
+
             case "cancelled":
                 title = "❌ Order Cancelled";
                 message = `Your order from ${order.shopId.name} has been cancelled.`;
                 break;
-            default:
-                break;
         }
 
-        // If there is a valid update to notify
         if (title && message) {
-            try {
-                // Build items summary
-                const itemsSummary = order.items
-                    .map((i) => `${i.quantity} x ${i.productId?.name || ""}`)
-                    .join(", ");
+            const itemsSummary = order.items
+                .map((i) => `${i.quantity} x ${i.productId?.name || ""}`)
+                .join(", ");
 
-                // Create notification in DB
-                await new Notification({
-                    recipientId: order.customerId._id,
-                    senderId: order.shopId.ownerId,
-                    shopId: order.shopId._id,
-                    type: "ORDER_STATUS",
+            // Save notification in DB
+            await new Notification({
+                userId: order.customerId._id, // ✅ FIXED
+                senderId: order.shopId.ownerId,
+                shopId: order.shopId._id,
+                type: "ORDER", // ✅ FIXED enum
+                title,
+                message,
+                actionRequired: false,
+                metadata: {
+                    customerName: order.customerId.name,
+                    items: itemsSummary,
+                    address: `${order.deliveryAddress.area || ""}, ${
+                        order.deliveryAddress.city || ""
+                    } ${order.deliveryAddress.pincode || ""}`,
+                },
+            }).save();
+
+            // Push notification
+            const customerUser = await User.findById(order.customerId._id);
+
+            if (customerUser?.fcmToken) {
+                console.log("Sending push notification...");
+                await sendNotification(customerUser.fcmToken, {
                     title,
-                    message,
-                    actionRequired: false,
-                    metadata: {
-                        customerName: order.customerId.name,
-                        items: itemsSummary,
-                        address: `${order.deliveryAddress.area || ""}, ${
-                            order.deliveryAddress.city || ""
-                        } ${order.deliveryAddress.pincode || ""}`,
+                    body: message,
+                    data: {
+                        orderId: order._id.toString(),
+                        type: "ORDER_STATUS",
                     },
-                }).save();
-
-                // Send Firebase push notification to CUSTOMER
-                const customerUser = await User.findById(order.customerId._id);
-
-                if (customerUser?.fcmToken) {
-                    await sendNotification(customerUser.fcmToken, {
-                        title,
-                        body: message,
-                        data: {
-                            orderId: order._id.toString(),
-                            type: "ORDER_STATUS",
-                        },
-                    });
-                } else {
-                    console.warn("No FCM token found for customer.");
-                }
-            } catch (notificationErr) {
-                console.error(
-                    "Error sending customer notification:",
-                    notificationErr
-                );
+                });
+            } else {
+                console.log("❌ No FCM token for customer");
             }
         }
 
         res.json(order);
     } catch (err) {
-        console.error("Error updating order status:", err);
+        console.error("🔥 ERROR in updateOrderStatus:", err);
         res.status(400).json({ error: err.message });
     }
 };
