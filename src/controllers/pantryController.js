@@ -23,9 +23,15 @@ export const addToPantry = async (req, res) => {
         } = req.body;
 
         // Check if item already exists
-        const existingItem = await PantryItem.findOne({ userId, shopId, productId });
+        const existingItem = await PantryItem.findOne({
+            userId,
+            shopId,
+            productId,
+        });
         if (existingItem) {
-            return res.status(400).json({ error: "This item is already in your pantry" });
+            return res
+                .status(400)
+                .json({ error: "This item is already in your pantry" });
         }
 
         const pantryItem = new PantryItem({
@@ -79,7 +85,7 @@ export const updatePantryItem = async (req, res) => {
         const { currentPacks, status, notes } = req.body;
 
         const pantryItem = await PantryItem.findById(id)
-            .populate("userId", "name location")
+            .populate("userId", "name location fcmToken")
             .populate("shopId", "name ownerId");
 
         if (!pantryItem) {
@@ -92,7 +98,10 @@ export const updatePantryItem = async (req, res) => {
         if (notes) pantryItem.notes = notes;
 
         // Auto-change status to LOW if below threshold
-        if (currentPacks <= pantryItem.refillThreshold && pantryItem.status === "STOCKED") {
+        if (
+            currentPacks <= pantryItem.refillThreshold &&
+            pantryItem.status === "STOCKED"
+        ) {
             pantryItem.status = "LOW";
         }
 
@@ -101,7 +110,7 @@ export const updatePantryItem = async (req, res) => {
         // If refill requested, notify shopkeeper
         if (status === "REFILL_REQUESTED") {
             const updatedItem = await PantryItem.findById(id)
-                .populate("userId", "name location")
+                .populate("userId", "name location fcmToken")
                 .populate("shopId", "name ownerId");
 
             await createRefillNotification(updatedItem);
@@ -123,7 +132,9 @@ export const getShopRefillRequests = async (req, res) => {
 
         const refillRequests = await PantryItem.find({
             shopId,
-            status: { $in: ["REFILL_REQUESTED", "CONFIRMED", "OUT_FOR_DELIVERY"] },
+            status: {
+                $in: ["REFILL_REQUESTED", "CONFIRMED", "OUT_FOR_DELIVERY"],
+            },
         })
             .populate("userId", "name email phone")
             .populate("productId", "name category image")
@@ -145,7 +156,7 @@ export const confirmRefillRequest = async (req, res) => {
         const { status } = req.body; // CONFIRMED, OUT_FOR_DELIVERY, DELIVERED
 
         const pantryItem = await PantryItem.findById(id)
-            .populate("userId", "name")
+            .populate("userId", "name fcmToken")
             .populate("shopId", "name ownerId");
 
         if (!pantryItem) {
@@ -155,7 +166,8 @@ export const confirmRefillRequest = async (req, res) => {
         pantryItem.status = status;
 
         if (status === "DELIVERED") {
-            pantryItem.packsOwned = pantryItem.currentPacks || pantryItem.packsOwned;
+            pantryItem.packsOwned =
+                pantryItem.currentPacks || pantryItem.packsOwned;
             pantryItem.currentPacks = pantryItem.packsOwned;
             pantryItem.lastRefilled = new Date();
             pantryItem.status = "STOCKED";
@@ -192,7 +204,9 @@ const createRefillNotification = async (pantryItem) => {
                 customerName: pantryItem.userId.name,
                 productName: pantryItem.productName,
                 quantity: pantryItem.currentPacks,
-                address: `${pantryItem.userId.location?.area || ""}, ${pantryItem.userId.location?.city || ""}`,
+                address: `${pantryItem.userId.location?.area || ""}, ${
+                    pantryItem.userId.location?.city || ""
+                }`,
             },
         });
 
@@ -222,7 +236,9 @@ const createRefillNotification = async (pantryItem) => {
  */
 const createStatusUpdateNotification = async (pantryItem, status) => {
     try {
-        let title = "", message = "", notificationType = "";
+        let title = "",
+            message = "",
+            notificationType = "";
 
         switch (status) {
             case "CONFIRMED":
@@ -261,7 +277,9 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
 
         await notification.save();
 
-        const consumer = await User.findById(pantryItem.userId._id);
+        const consumerId = pantryItem.userId._id || pantryItem.userId;
+        const consumer = await User.findById(consumerId);
+
         if (consumer?.fcmToken) {
             await sendNotification(consumer.fcmToken, {
                 title,
@@ -275,7 +293,10 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
             });
         }
     } catch (err) {
-        console.error("❌ Failed to send pantry status push notification:", err);
+        console.error(
+            "❌ Failed to send pantry status push notification:",
+            err
+        );
     }
 };
 
