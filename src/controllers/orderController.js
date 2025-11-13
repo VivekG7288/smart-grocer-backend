@@ -22,8 +22,8 @@ export const createOrder = async (req, res) => {
             customerContact: {
                 name: customer.name,
                 email: customer.email,
-                phone: customer.phone // Get phone from customer profile
-            }
+                phone: customer.phone, // Get phone from customer profile
+            },
         };
 
         const order = new Order(orderData);
@@ -70,8 +70,11 @@ export const createOrder = async (req, res) => {
         console.log("Order created successfully:", order);
 
         // Get shop owner's FCM token
-        const shopOwner = await User.findById(order.shopId.ownerId, 'fcmToken name');
-        
+        const shopOwner = await User.findById(
+            order.shopId.ownerId,
+            "fcmToken name"
+        );
+
         // Build items summary for notification
         const itemsSummary = order.items
             .map((item) => `${item.quantity} x ${item.productId.name}`)
@@ -89,8 +92,8 @@ export const createOrder = async (req, res) => {
                 orderId: order._id.toString(),
                 customerName: order.customerContact.name,
                 items: itemsSummary,
-                address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`
-            }
+                address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`,
+            },
         });
         await notification.save();
 
@@ -103,8 +106,8 @@ export const createOrder = async (req, res) => {
                     type: "ORDER_RECEIVED",
                     orderId: order._id.toString(),
                     items: itemsSummary,
-                    timestamp: new Date().toISOString()
-                }
+                    timestamp: new Date().toISOString(),
+                },
             });
         }
 
@@ -149,85 +152,91 @@ export const updateOrderStatus = async (req, res) => {
     try {
         const { status } = req.body; // e.g., "CONFIRMED", "SHIPPED", "DELIVERED"
 
-        // Fetch order and populate customerId and shopId
+        // Fetch updated order and populate all required fields
         const order = await Order.findByIdAndUpdate(
             req.params.id,
             { status },
             { new: true }
         )
-            .populate("customerId", "_id name email") // essential
-            .populate("shopId", "_id name ownerId");
+            .populate("customerId", "_id name email phone")
+            .populate("shopId", "_id name ownerId")
+            .populate("items.productId", "name price");
 
-        if (!order) return res.status(404).json({ error: "Order not found" });
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
 
-        // Send notification to customer
-        if (status && order.customerId) {
-            let title = "";
-            let message = "";
+        // Prepare status notification title & message
+        let title = "";
+        let message = "";
 
-            switch (status.toLowerCase()) {
-                case "confirmed":
-                    title = "✅ Order Confirmed";
-                    message = `Your order from ${order.shopId.name} has been confirmed.`;
-                    break;
-                case "shipped":
-                    title = "📦 Order Shipped";
-                    message = `Good news! Your order from ${order.shopId.name} is on its way.`;
-                    break;
-                case "delivered":
-                    title = "🎉 Order Delivered";
-                    message = `Your order from ${order.shopId.name} has been delivered successfully.`;
-                    break;
-                case "cancelled":
-                    title = "❌ Order Cancelled";
-                    message = `Your order from ${order.shopId.name} has been cancelled.`;
-                    break;
-                default:
-                    break;
-            }
+        switch (status?.toLowerCase()) {
+            case "confirmed":
+                title = "✅ Order Confirmed";
+                message = `Your order from ${order.shopId.name} has been confirmed.`;
+                break;
+            case "shipped":
+                title = "📦 Order Shipped";
+                message = `Good news! Your order from ${order.shopId.name} is on its way.`;
+                break;
+            case "delivered":
+                title = "🎉 Order Delivered";
+                message = `Your order from ${order.shopId.name} has been delivered successfully.`;
+                break;
+            case "cancelled":
+                title = "❌ Order Cancelled";
+                message = `Your order from ${order.shopId.name} has been cancelled.`;
+                break;
+            default:
+                break;
+        }
 
-            if (title && message) {
-                try {
-                    const itemsSummary = order.items
-                        .map(
-                            (i) => `${i.quantity} x ${i.productId?.name || ""}`
-                        )
-                        .join(", ");
+        // If there is a valid update to notify
+        if (title && message) {
+            try {
+                // Build items summary
+                const itemsSummary = order.items
+                    .map((i) => `${i.quantity} x ${i.productId?.name || ""}`)
+                    .join(", ");
 
-                    await new Notification({
-                        recipientId: order.customerId._id,
-                        senderId: order.shopId.ownerId,
-                        shopId: order.shopId._id,
-                        type: "ORDER",
+                // Create notification in DB
+                await new Notification({
+                    recipientId: order.customerId._id,
+                    senderId: order.shopId.ownerId,
+                    shopId: order.shopId._id,
+                    type: "ORDER_STATUS",
+                    title,
+                    message,
+                    actionRequired: false,
+                    metadata: {
+                        customerName: order.customerId.name,
+                        items: itemsSummary,
+                        address: `${order.deliveryAddress.area || ""}, ${
+                            order.deliveryAddress.city || ""
+                        } ${order.deliveryAddress.pincode || ""}`,
+                    },
+                }).save();
+
+                // Send Firebase push notification to CUSTOMER
+                const customerUser = await User.findById(order.customerId._id);
+
+                if (customerUser?.fcmToken) {
+                    await sendNotification(customerUser.fcmToken, {
                         title,
-                        message,
-                        actionRequired: false,
-                        metadata: {
-                            customerName: order.customerId.name,
-                            items: itemsSummary,
-                            address: `${order.deliveryAddress.area || ""}, ${
-                                order.deliveryAddress.city || ""
-                            } ${order.deliveryAddress.pincode || ""}`,
+                        body: message,
+                        data: {
+                            orderId: order._id.toString(),
+                            type: "ORDER_STATUS",
                         },
-                    }).save();
-
-                    // Send Firebase push notification to customer
-                    try {
-                        const customerUser = await User.findById(order.customerId._id);
-                        if (customerUser?.fcmToken) {
-                            await sendNotification(
-                                [customerUser.fcmToken],
-                                title,
-                                message,
-                                { orderId: order._id.toString(), type: 'ORDER_STATUS' }
-                            );
-                        }
-                    } catch (pushErr) {
-                        console.error('Failed to send order status push notification:', pushErr);
-                    }
-                } catch (notifyErr) {
-                    console.error("Failed to create notification:", notifyErr);
+                    });
+                } else {
+                    console.warn("No FCM token found for customer.");
                 }
+            } catch (notificationErr) {
+                console.error(
+                    "Error sending customer notification:",
+                    notificationErr
+                );
             }
         }
 
