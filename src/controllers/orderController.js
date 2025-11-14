@@ -95,7 +95,7 @@ export const createOrder = async (req, res) => {
                 address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`,
             },
         });
-        // await notification.save();
+        await notification.save();
 
         // Send FCM notification to shop owner
         if (shopOwner?.fcmToken) {
@@ -218,7 +218,7 @@ export const updateOrderStatus = async (req, res) => {
                         order.deliveryAddress.city || ""
                     } ${order.deliveryAddress.pincode || ""}`,
                 },
-            });
+            }).save();
 
             // Push notification
             const customerUser = await User.findById(order.customerId._id);
