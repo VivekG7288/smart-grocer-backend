@@ -81,21 +81,21 @@ export const createOrder = async (req, res) => {
             .join(", ");
 
         // Create notification for shop owner
-        const notification = new Notification({
-            userId: order.shopId.ownerId,
-            senderId: order.customerId._id,
-            shopId: order.shopId._id,
-            type: "ORDER_RECEIVED",
-            title: "🛒 New Order Received",
-            message: `${order.customerContact.name} placed an order: ${itemsSummary}`,
-            data: {
-                orderId: order._id.toString(),
-                customerName: order.customerContact.name,
-                items: itemsSummary,
-                address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`,
-            },
-        });
-        await notification.save();
+        // const notification = new Notification({
+        //     userId: order.shopId.ownerId,
+        //     senderId: order.customerId._id,
+        //     shopId: order.shopId._id,
+        //     type: "ORDER_RECEIVED",
+        //     title: "🛒 New Order Received",
+        //     message: `${order.customerContact.name} placed an order: ${itemsSummary}`,
+        //     data: {
+        //         orderId: order._id.toString(),
+        //         customerName: order.customerContact.name,
+        //         items: itemsSummary,
+        //         address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`,
+        //     },
+        // });
+        // await notification.save();
 
         // Send FCM notification to shop owner
         if (shopOwner?.fcmToken) {
@@ -203,22 +203,22 @@ export const updateOrderStatus = async (req, res) => {
                 .join(", ");
 
             // Save notification in DB
-            await new Notification({
-                userId: order.customerId._id, // ✅ FIXED
-                senderId: order.shopId.ownerId,
-                shopId: order.shopId._id,
-                type: "ORDER", // ✅ FIXED enum
-                title,
-                message,
-                actionRequired: false,
-                metadata: {
-                    customerName: order.customerId.name,
-                    items: itemsSummary,
-                    address: `${order.deliveryAddress.area || ""}, ${
-                        order.deliveryAddress.city || ""
-                    } ${order.deliveryAddress.pincode || ""}`,
-                },
-            }).save();
+            // await new Notification({
+            //     userId: order.customerId._id, // ✅ FIXED
+            //     senderId: order.shopId.ownerId,
+            //     shopId: order.shopId._id,
+            //     type: "ORDER", // ✅ FIXED enum
+            //     title,
+            //     message,
+            //     actionRequired: false,
+            //     metadata: {
+            //         customerName: order.customerId.name,
+            //         items: itemsSummary,
+            //         address: `${order.deliveryAddress.area || ""}, ${
+            //             order.deliveryAddress.city || ""
+            //         } ${order.deliveryAddress.pincode || ""}`,
+            //     },
+            // }).save();
 
             // Push notification
             const customerUser = await User.findById(order.customerId._id);
