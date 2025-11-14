@@ -98,17 +98,20 @@ export const createOrder = async (req, res) => {
         // await notification.save();
 
         // Send FCM notification to shop owner
-        if (shopOwner?.fcmToken) {
-            await sendNotification(shopOwner.fcmToken, {
-                title: "🛒 New Order Received",
-                body: `${order.customerContact.name} placed an order: ${itemsSummary}`,
-                data: {
-                    type: "ORDER_RECEIVED",
-                    orderId: order._id.toString(),
-                    items: itemsSummary,
-                    timestamp: new Date().toISOString(),
-                },
-            });
+        if (shopOwner?.fcmTokens && shopOwner.fcmTokens.length > 0) {
+            const notificationPromises = shopOwner.fcmTokens.map(token =>
+                sendNotification(token, {
+                    title: "🛒 New Order Received",
+                    body: `${order.customerContact.name} placed an order: ${itemsSummary}`,
+                    data: {
+                        type: "ORDER_RECEIVED",
+                        orderId: order._id.toString(),
+                        items: itemsSummary,
+                        timestamp: new Date().toISOString(),
+                    },
+                })
+            );
+            await Promise.all(notificationPromises);
         }
 
         res.status(201).json(order);
@@ -223,18 +226,21 @@ export const updateOrderStatus = async (req, res) => {
             // Push notification
             const customerUser = await User.findById(order.customerId._id);
 
-            if (customerUser?.fcmToken) {
+            if (customerUser?.fcmTokens && customerUser.fcmTokens.length > 0) {
                 console.log("Sending push notification...");
-                await sendNotification(customerUser.fcmToken, {
-                    title,
-                    body: message,
-                    data: {
-                        orderId: order._id.toString(),
-                        type: "ORDER_STATUS",
-                    },
-                });
+                const notificationPromises = customerUser.fcmTokens.map(token =>
+                    sendNotification(token, {
+                        title,
+                        body: message,
+                        data: {
+                            orderId: order._id.toString(),
+                            type: "ORDER_STATUS",
+                        },
+                    })
+                );
+                await Promise.all(notificationPromises);
             } else {
-                console.log("❌ No FCM token for customer");
+                console.log("❌ No FCM tokens for customer");
             }
         }
 

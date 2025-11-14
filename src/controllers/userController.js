@@ -63,13 +63,16 @@ export const saveFCMToken = async (req, res) => {
     const { userId, token } = req.body;
     if (!userId || !token) return res.status(400).json({ error: 'userId and token are required' });
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { fcmToken: token },
-      { new: true }
-    );
-
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Add token to array if it doesn't already exist
+    if (!user.fcmTokens) user.fcmTokens = [];
+    if (!user.fcmTokens.includes(token)) {
+      user.fcmTokens.push(token);
+    }
+    
+    await user.save();
 
     res.json({ message: 'FCM token saved', user });
   } catch (err) {

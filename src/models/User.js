@@ -14,8 +14,8 @@ const userSchema = new mongoose.Schema(
         password: { type: String, required: true },
         role: { type: String, enum: Object.values(UserRole), required: true },
         picture: { type: String },
-        // Firebase Cloud Messaging token for push notifications
-        fcmToken: { type: String },
+        // Firebase Cloud Messaging tokens for push notifications (array for multiple devices)
+        fcmTokens: [{ type: String }],
         subscriptions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Shop" }],
     },
     { timestamps: true }

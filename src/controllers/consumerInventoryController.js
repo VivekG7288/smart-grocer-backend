@@ -53,7 +53,7 @@ export const updateInventoryItem = async (req, res) => {
       { new: true }
     ).populate({
       path: 'customerId',
-      select: 'name email fcmToken'
+      select: 'name email fcmTokens'
     }).populate({
       path: 'shopId',
       select: 'name ownerId'
@@ -65,8 +65,8 @@ export const updateInventoryItem = async (req, res) => {
 
     // Check if quantity is below threshold and send notifications
     if (item.quantity <= item.minQuantity) {
-      // Get shop owner FCM token
-      const shopOwner = await User.findById(item.shopId.ownerId, 'fcmToken');
+      // Get shop owner FCM tokens
+      const shopOwner = await User.findById(item.shopId.ownerId, 'fcmTokens');
 
       // Create notifications
       const notifications = [
@@ -89,27 +89,34 @@ export const updateInventoryItem = async (req, res) => {
       // Save notifications
       await Promise.all(notifications.map(n => n.save()));
 
-      // Send FCM notifications
-      if (item.customerId.fcmToken) {
-        await sendNotification(item.customerId.fcmToken, {
-          title: "Low Inventory Alert",
-          body: `Your ${item.productId.name} is running low. Current quantity: ${item.quantity}`,
-          data: {
-            type: "LOW_INVENTORY",
-            inventoryItemId: item._id.toString()
-          }
-        });
+      // Send FCM notifications to customer
+      if (item.customerId.fcmTokens && item.customerId.fcmTokens.length > 0) {
+        const customerNotifications = item.customerId.fcmTokens.map(token =>
+          sendNotification(token, {
+            title: "Low Inventory Alert",
+            body: `Your ${item.productId.name} is running low. Current quantity: ${item.quantity}`,
+            data: {
+              type: "LOW_INVENTORY",
+              inventoryItemId: item._id.toString()
+            }
+          })
+        );
+        await Promise.all(customerNotifications);
       }
 
-      if (shopOwner?.fcmToken) {
-        await sendNotification(shopOwner.fcmToken, {
-          title: "Refill Request",
-          body: `Customer ${item.customerId.name} needs a refill for ${item.productId.name}`,
-          data: {
-            type: "REFILL_REQUEST",
-            inventoryItemId: item._id.toString()
-          }
-        });
+      // Send FCM notifications to shop owner
+      if (shopOwner?.fcmTokens && shopOwner.fcmTokens.length > 0) {
+        const shopNotifications = shopOwner.fcmTokens.map(token =>
+          sendNotification(token, {
+            title: "Refill Request",
+            body: `Customer ${item.customerId.name} needs a refill for ${item.productId.name}`,
+            data: {
+              type: "REFILL_REQUEST",
+              inventoryItemId: item._id.toString()
+            }
+          })
+        );
+        await Promise.all(shopNotifications);
       }
     }
 
