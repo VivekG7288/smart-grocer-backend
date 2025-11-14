@@ -63,16 +63,16 @@ export const createOrder = async (req, res) => {
 
         // Populate references for response
         // Populate all necessary references
-        await order.populate("customerId", "name email phone fcmToken");
+        await order.populate("customerId", "name email phone fcmTokens");
         await order.populate("shopId", "name ownerId");
         await order.populate("items.productId", "name price");
 
         console.log("Order created successfully:", order);
 
-        // Get shop owner's FCM token
+        // Get shop owner's FCM tokens
         const shopOwner = await User.findById(
             order.shopId.ownerId,
-            "fcmToken name"
+            "fcmTokens name"
         );
 
         // Build items summary for notification
@@ -165,7 +165,7 @@ export const updateOrderStatus = async (req, res) => {
             { status: cleanStatus.toUpperCase() },
             { new: true }
         )
-            .populate("customerId", "_id name email phone fcmToken")
+            .populate("customerId", "_id name email phone fcmTokens")
             .populate("shopId", "_id name ownerId")
             .populate("items.productId", "name price");
 

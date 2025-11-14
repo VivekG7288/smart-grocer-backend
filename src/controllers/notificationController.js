@@ -7,7 +7,7 @@ export const getUserNotifications = async (req, res) => {
     try {
         const { userId } = req.params;
 
-        const notifications = await Notification.find({ recipientId: userId })
+        const notifications = await Notification.find({ userId: userId })
             .populate("shopId", "name")
             .populate("senderId", "name")
             .sort({ createdAt: -1 })

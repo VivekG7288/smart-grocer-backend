@@ -85,7 +85,7 @@ export const updatePantryItem = async (req, res) => {
         const { currentPacks, status, notes } = req.body;
 
         const pantryItem = await PantryItem.findById(id)
-            .populate("userId", "name location fcmToken")
+            .populate("userId", "name location fcmTokens")
             .populate("shopId", "name ownerId");
 
         if (!pantryItem) {
@@ -110,7 +110,7 @@ export const updatePantryItem = async (req, res) => {
         // If refill requested, notify shopkeeper
         if (status === "REFILL_REQUESTED") {
             const updatedItem = await PantryItem.findById(id)
-                .populate("userId", "name location fcmToken")
+                .populate("userId", "name location fcmTokens")
                 .populate("shopId", "name ownerId");
 
             await createRefillNotification(updatedItem);
@@ -156,7 +156,7 @@ export const confirmRefillRequest = async (req, res) => {
         const { status } = req.body; // CONFIRMED, OUT_FOR_DELIVERY, DELIVERED
 
         const pantryItem = await PantryItem.findById(id)
-            .populate("userId", "name fcmToken")
+            .populate("userId", "name fcmTokens")
             .populate("shopId", "name ownerId");
 
         if (!pantryItem) {
@@ -191,9 +191,8 @@ export const confirmRefillRequest = async (req, res) => {
 const createRefillNotification = async (pantryItem) => {
     try {
         const notification = new Notification({
-            recipientId: pantryItem.shopId.ownerId,
-            senderId: pantryItem.userId._id,
             userId: pantryItem.shopId.ownerId,
+            senderId: pantryItem.userId._id,
             shopId: pantryItem.shopId._id,
             pantryItemId: pantryItem._id,
             type: "REFILL_REQUEST",
@@ -213,18 +212,21 @@ const createRefillNotification = async (pantryItem) => {
         await notification.save();
 
         const shopOwner = await User.findById(pantryItem.shopId.ownerId);
-        if (shopOwner?.fcmToken) {
-            await sendNotification(shopOwner.fcmToken, {
-                title: notification.title,
-                body: notification.message,
-                data: {
-                    type: "REFILL_REQUEST",
-                    pantryItemId: pantryItem._id.toString(),
-                    productName: pantryItem.productName,
-                    quantity: pantryItem.currentPacks,
-                    timestamp: new Date().toISOString(),
-                },
-            });
+        if (shopOwner?.fcmTokens && shopOwner.fcmTokens.length > 0) {
+            const notificationPromises = shopOwner.fcmTokens.map(token =>
+                sendNotification(token, {
+                    title: notification.title,
+                    body: notification.message,
+                    data: {
+                        type: "REFILL_REQUEST",
+                        pantryItemId: pantryItem._id.toString(),
+                        productName: pantryItem.productName,
+                        quantity: pantryItem.currentPacks,
+                        timestamp: new Date().toISOString(),
+                    },
+                })
+            );
+            await Promise.all(notificationPromises);
         }
     } catch (err) {
         console.error("❌ Failed to send refill push notification:", err);
@@ -259,7 +261,6 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
         }
 
         const notification = new Notification({
-            recipientId: pantryItem.userId._id,
             userId: pantryItem.userId._id,
             senderId: pantryItem.shopId.ownerId,
             shopId: pantryItem.shopId._id,
@@ -280,17 +281,20 @@ const createStatusUpdateNotification = async (pantryItem, status) => {
         const consumerId = pantryItem.userId._id || pantryItem.userId;
         const consumer = await User.findById(consumerId);
 
-        if (consumer?.fcmToken) {
-            await sendNotification(consumer.fcmToken, {
-                title,
-                body: message,
-                data: {
-                    type: notificationType,
-                    pantryItemId: pantryItem._id.toString(),
-                    productName: pantryItem.productName,
-                    timestamp: new Date().toISOString(),
-                },
-            });
+        if (consumer?.fcmTokens && consumer.fcmTokens.length > 0) {
+            const notificationPromises = consumer.fcmTokens.map(token =>
+                sendNotification(token, {
+                    title,
+                    body: message,
+                    data: {
+                        type: notificationType,
+                        pantryItemId: pantryItem._id.toString(),
+                        productName: pantryItem.productName,
+                        timestamp: new Date().toISOString(),
+                    },
+                })
+            );
+            await Promise.all(notificationPromises);
         }
     } catch (err) {
         console.error(
