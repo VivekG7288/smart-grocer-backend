@@ -99,7 +99,7 @@ export const createOrder = async (req, res) => {
 
         // Send FCM notification to shop owner
         if (shopOwner?.fcmTokens && shopOwner.fcmTokens.length > 0) {
-            const notificationPromises = shopOwner.fcmTokens.map(token =>
+            const notificationPromises = shopOwner.fcmTokens.map((token) =>
                 sendNotification(token, {
                     title: "🛒 New Order Received",
                     body: `${order.customerContact.name} placed an order: ${itemsSummary}`,
@@ -228,15 +228,16 @@ export const updateOrderStatus = async (req, res) => {
 
             if (customerUser?.fcmTokens && customerUser.fcmTokens.length > 0) {
                 console.log("Sending push notification...");
-                const notificationPromises = customerUser.fcmTokens.map(token =>
-                    sendNotification(token, {
-                        title,
-                        body: message,
-                        data: {
-                            orderId: order._id.toString(),
-                            type: "ORDER_STATUS",
-                        },
-                    })
+                const notificationPromises = customerUser.fcmTokens.map(
+                    (token) =>
+                        sendNotification(token, {
+                            title,
+                            body: message,
+                            data: {
+                                orderId: order._id.toString(),
+                                type: "ORDER_STATUS",
+                            },
+                        })
                 );
                 await Promise.all(notificationPromises);
             } else {
