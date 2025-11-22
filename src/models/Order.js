@@ -29,6 +29,7 @@ const orderSchema = new mongoose.Schema(
             enum: ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"],
             default: "PENDING",
         },
+        deliveryType: { type: String, required: false },
 
         // Add delivery address to order
         deliveryAddress: {
