@@ -40,26 +40,6 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        // Decrease stock for each product
-        for (const item of order.items) {
-            const product = await Product.findById(item.productId);
-            if (!product) {
-                return res
-                    .status(400)
-                    .json({ error: `Product ${item.productId} not found` });
-            }
-
-            if (product.stock < item.quantity) {
-                return res.status(400).json({
-                    error: `Insufficient stock for ${product.name}. Only ${product.stock} available.`,
-                });
-            }
-
-            await Product.findByIdAndUpdate(item.productId, {
-                $inc: { stock: -item.quantity },
-            });
-        }
-
         await order.save();
 
         // Populate references for response
@@ -135,11 +115,7 @@ export const updateOrderStatus = async (req, res) => {
         console.log("⚡ CLEANED STATUS:", JSON.stringify(cleanStatus));
 
         // Fetch and update order
-        const order = await Order.findByIdAndUpdate(
-            req.params.id,
-            { status: cleanStatus.toUpperCase() },
-            { new: true }
-        )
+        const order = await Order.findById(req.params.id)
             .populate("customerId", "_id name email phone fcmTokens")
             .populate("shopId", "_id name ownerId")
             .populate("items.productId", "name price");
@@ -149,7 +125,41 @@ export const updateOrderStatus = async (req, res) => {
             return res.status(404).json({ error: "Order not found" });
         }
 
-        // Status → Notification mapping
+        // Update status
+        order.status = cleanStatus.toUpperCase();
+        await order.save();
+
+        // ⭐ STOCK LOGIC → Reduce stock ONLY on "CONFIRMED"
+        if (cleanStatus === "confirmed") {
+            console.log("🟦 Updating stock on order confirmation...");
+
+            for (const item of order.items) {
+                const product = await Product.findById(item.productId);
+
+                if (!product) {
+                    return res.status(400).json({
+                        error: `Product ${item.productId} not found`,
+                    });
+                }
+
+                // Check if enough stock exists
+                if (product.stock < item.quantity) {
+                    return res.status(400).json({
+                        error: `Insufficient stock for ${product.name}. Only ${product.stock} left.`,
+                    });
+                }
+
+                // Deduct stock
+                await Product.findByIdAndUpdate(item.productId, {
+                    $inc: { stock: -item.quantity },
+                });
+            }
+
+            console.log("✔ Stock updated successfully");
+        }
+
+        // ------------ NOTIFICATION SECTION ------------ //
+
         let title = "";
         let message = "";
 
@@ -175,51 +185,11 @@ export const updateOrderStatus = async (req, res) => {
                 break;
         }
 
+        // Send push notification
         if (title && message) {
-            const itemsSummary = order.items
-                .map((i) => `${i.quantity} x ${i.productId?.name || ""}`)
-                .join(", ");
+            const userId = String(order.customerId._id);
+            console.log("Sending push to:", userId);
 
-            // Save notification in DB
-            // await new Notification({
-            //     userId: order.customerId._id, // ✅ FIXED
-            //     senderId: order.shopId.ownerId,
-            //     shopId: order.shopId._id,
-            //     type: "ORDER", // ✅ FIXED enum
-            //     title,
-            //     message,
-            //     actionRequired: false,
-            //     metadata: {
-            //         customerName: order.customerId.name,
-            //         items: itemsSummary,
-            //         address: `${order.deliveryAddress.area || ""}, ${
-            //             order.deliveryAddress.city || ""
-            //         } ${order.deliveryAddress.pincode || ""}`,
-            //     },
-            // }).save();
-
-            // Push notification
-            const customerUser = await User.findById(order.customerId._id);
-
-            // if (customerUser?.fcmTokens && customerUser.fcmTokens.length > 0) {
-            //     console.log("Sending push notification...");
-            //     const notificationPromises = customerUser.fcmTokens.map(
-            //         (token) =>
-            //             sendNotification(token, {
-            //                 title,
-            //                 body: message,
-            //                 data: {
-            //                     orderId: order._id.toString(),
-            //                     type: "ORDER_STATUS",
-            //                 },
-            //             })
-            //     );
-            //     await Promise.all(notificationPromises);
-            // } else {
-            //     console.log("❌ No FCM tokens for customer");
-            // }
-            const userId = String(customerUser._id);
-            console.log("Test user id while status update", userId);
             sendPushNotification(
                 userId,
                 order.status,
