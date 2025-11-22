@@ -3,7 +3,8 @@ import Product from "../models/Product.js";
 import Notification from "../models/Notification.js";
 import Shop from "../models/Shop.js";
 import User from "../models/User.js";
-import { sendNotification } from "../utils/firebase.js";
+// import { sendNotification } from "../utils/firebase.js";
+import { sendPushNotification } from "../utils/oneSignal.js";
 
 // Create new order
 export const createOrder = async (req, res) => {
@@ -80,39 +81,13 @@ export const createOrder = async (req, res) => {
             .map((item) => `${item.quantity} x ${item.productId.name}`)
             .join(", ");
 
-        // Create notification for shop owner
-        // const notification = new Notification({
-        //     userId: order.shopId.ownerId,
-        //     senderId: order.customerId._id,
-        //     shopId: order.shopId._id,
-        //     type: "ORDER_RECEIVED",
-        //     title: "🛒 New Order Received",
-        //     message: `${order.customerContact.name} placed an order: ${itemsSummary}`,
-        //     data: {
-        //         orderId: order._id.toString(),
-        //         customerName: order.customerContact.name,
-        //         items: itemsSummary,
-        //         address: `${order.deliveryAddress.area}, ${order.deliveryAddress.city} ${order.deliveryAddress.pincode}`,
-        //     },
-        // });
-        // await notification.save();
-
-        // Send FCM notification to shop owner
-        if (shopOwner?.fcmTokens && shopOwner.fcmTokens.length > 0) {
-            const notificationPromises = shopOwner.fcmTokens.map((token) =>
-                sendNotification(token, {
-                    title: "🛒 New Order Received",
-                    body: `${order.customerContact.name} placed an order: ${itemsSummary}`,
-                    data: {
-                        type: "ORDER_RECEIVED",
-                        orderId: order._id.toString(),
-                        items: itemsSummary,
-                        timestamp: new Date().toISOString(),
-                    },
-                })
-            );
-            await Promise.all(notificationPromises);
-        }
+        const userId = String(order.customerId._id);
+        console.log("Test user id", userId);
+        sendPushNotification(
+            userId,
+            "ORDER_RECEIVED",
+            `${order.customerContact.name} placed a new order`
+        );
 
         res.status(201).json(order);
     } catch (err) {
@@ -226,23 +201,30 @@ export const updateOrderStatus = async (req, res) => {
             // Push notification
             const customerUser = await User.findById(order.customerId._id);
 
-            if (customerUser?.fcmTokens && customerUser.fcmTokens.length > 0) {
-                console.log("Sending push notification...");
-                const notificationPromises = customerUser.fcmTokens.map(
-                    (token) =>
-                        sendNotification(token, {
-                            title,
-                            body: message,
-                            data: {
-                                orderId: order._id.toString(),
-                                type: "ORDER_STATUS",
-                            },
-                        })
-                );
-                await Promise.all(notificationPromises);
-            } else {
-                console.log("❌ No FCM tokens for customer");
-            }
+            // if (customerUser?.fcmTokens && customerUser.fcmTokens.length > 0) {
+            //     console.log("Sending push notification...");
+            //     const notificationPromises = customerUser.fcmTokens.map(
+            //         (token) =>
+            //             sendNotification(token, {
+            //                 title,
+            //                 body: message,
+            //                 data: {
+            //                     orderId: order._id.toString(),
+            //                     type: "ORDER_STATUS",
+            //                 },
+            //             })
+            //     );
+            //     await Promise.all(notificationPromises);
+            // } else {
+            //     console.log("❌ No FCM tokens for customer");
+            // }
+            const userId = String(customerUser._id);
+            console.log("Test user id while status update", userId);
+            sendPushNotification(
+                userId,
+                order.status,
+                `Your order has been ${order.status}`
+            );
         }
 
         res.json(order);
